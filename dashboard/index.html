@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Panama Energy Forecast — RNN vs. LSTM</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <h1 class="topbar__title">Panama Electricity Demand Forecast</h1>
+      <p class="topbar__subtitle">
+        RNN vs. LSTM — National Demand, Next-Hour Prediction
+      </p>
+    </header>
+
+    <main class="layout">
+      <!-- ============================================================
+       FIGURE 1 (report): Model selector + controls
+       ============================================================ -->
+      <section class="panel" aria-label="Model selection">
+        <div class="controls__row">
+          <div class="segmented" role="tablist" aria-label="Forecasting model">
+            <button
+              class="segmented__btn is-active"
+              data-model="LSTM"
+              role="tab"
+              aria-selected="true"
+            >
+              LSTM
+            </button>
+            <button
+              class="segmented__btn"
+              data-model="RNN"
+              role="tab"
+              aria-selected="false"
+            >
+              RNN
+            </button>
+          </div>
+          <button class="btn-fetch" id="fetchBtn">Fetch new data window</button>
+        </div>
+        <p class="controls__meta">
+          Data window ending: <strong id="timestampLabel">—</strong>
+        </p>
+      </section>
+
+      <!-- ============================================================
+       FIGURE 2 (report): Forecast chart — 24h history + prediction
+       ============================================================ -->
+      <section class="panel" aria-label="Demand chart">
+        <h2 class="panel__label">24-Hour Window &rarr; Next-Hour Forecast</h2>
+        <div class="chart-wrap" id="chartWrap">
+          <p class="chart-status" id="chartStatus">Loading window&hellip;</p>
+        </div>
+        <div class="legend">
+          <span class="legend__item"
+            ><span class="legend__swatch swatch--actual"></span>Actual
+            demand</span
+          >
+          <span class="legend__item"
+            ><span
+              class="legend__swatch swatch--pred"
+              id="legendPredSwatch"
+            ></span
+            >Predicted (<span id="legendModelName">LSTM</span>)</span
+          >
+        </div>
+      </section>
+
+      <!-- ============================================================
+       FIGURE 3 (report): Prediction readout
+       ============================================================ -->
+      <section class="panel panel--result" aria-label="Prediction result">
+        <h2 class="panel__label">AI Predicted Demand — Next Hour</h2>
+        <p class="result__value">
+          <span id="predictionValue">—</span
+          ><span class="result__unit">MW</span>
+        </p>
+      </section>
+
+      <!-- ============================================================
+       FIGURE 4 (report): Performance metrics
+       ============================================================ -->
+      <section class="panel" aria-label="Model performance metrics">
+        <h2 class="panel__label">
+          Test-Set Performance — <span id="metricsModelName">LSTM</span>
+        </h2>
+        <div class="metrics-grid">
+          <div class="metric-box">
+            <span class="metric-box__label">MAE</span>
+            <span class="metric-box__value" id="metricMAE">—</span>
+            <span class="metric-box__unit">MW</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-box__label">RMSE</span>
+            <span class="metric-box__value" id="metricRMSE">—</span>
+            <span class="metric-box__unit">MW</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-box__label">MAPE</span>
+            <span class="metric-box__value" id="metricMAPE">—</span>
+            <span class="metric-box__unit">%</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-box__label">R&sup2;</span>
+            <span class="metric-box__value" id="metricR2">—</span>
+            <span class="metric-box__unit">&nbsp;</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
