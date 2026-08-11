@@ -1,9 +1,13 @@
 /* ============================================================
    Panama Energy Forecast dashboard
    Talks to the FastAPI backend defined in main.py:
-     GET  /predict_sample/{model_name}   -> random 24h window + prediction
+     GET  /predict_sample/{model_name}   -> random 24h window + 6h forecast
      POST /predict_specific              -> re-predict the SAME window with
                                              a different model (fair comparison)
+
+   The model forecasts 6 hours ahead (PRED_LEN=6), and this dashboard now
+   shows all 6 -- both on the chart and as a strip of per-hour values --
+   not just the first one.
 
    The chart is drawn as plain inline SVG -- no charting library, no CDN,
    so nothing here depends on an external script loading successfully.
@@ -11,12 +15,12 @@
 
 const API_BASE = "http://127.0.0.1:8000";
 
-// Measured on the held-out test set (src/evaluate.py) after fixing the
-// train/evaluate path bug and giving LSTM more training epochs (40 vs
-// RNN's 20) -- see the project report for the full comparison.
+// Measured on the held-out test set, averaged across all 6 forecast hours
+// (a moderate-length verification run -- RNN 20 epochs, LSTM 10 of its
+// recommended 40 -- see the README; run the notebook fully for final numbers).
 const MODEL_STATS = {
-  LSTM: { MAE: "16.29", RMSE: "24.73", MAPE: "1.46", R2: "0.983", color: "#2563eb" },
-  RNN:  { MAE: "18.03", RMSE: "25.49", MAPE: "1.52", R2: "0.982", color: "#ea580c" },
+  LSTM: { MAE: "30.23", RMSE: "46.29", MAPE: "2.69", R2: "0.940", color: "#2563eb" },
+  RNN:  { MAE: "25.07", RMSE: "40.84", MAPE: "2.24", R2: "0.953", color: "#ea580c" },
 };
 
 const state = {
@@ -29,6 +33,7 @@ const el = {
   fetchBtn: document.getElementById("fetchBtn"),
   timestampLabel: document.getElementById("timestampLabel"),
   predictionValue: document.getElementById("predictionValue"),
+  horizonStrip: document.getElementById("horizonStrip"),
   metricsModelName: document.getElementById("metricsModelName"),
   legendModelName: document.getElementById("legendModelName"),
   legendPredSwatch: document.getElementById("legendPredSwatch"),
@@ -62,11 +67,18 @@ function updateMetricsPanel() {
   el.metricR2.textContent = stats.R2;
 }
 
+function renderHorizonStrip(horizon) {
+  el.horizonStrip.innerHTML = horizon
+    .map((v, i) => `<span class="horizon-chip">+${i + 1}h <strong>${v.toFixed(0)}</strong> MW</span>`)
+    .join("");
+}
+
 // Builds a simple line chart as an SVG string: no dependencies, no network
 // requests, so it can't silently fail the way a CDN-hosted library can.
-function buildChartSVG(history, prediction) {
+// `horizon` is the full 6-value forecast, not just the next hour.
+function buildChartSVG(history, horizon) {
   const stats = MODEL_STATS[state.selectedModel];
-  const points = history.concat([prediction]);
+  const points = history.concat(horizon);
 
   const W = 700, H = 250;
   const marginLeft = 46, marginRight = 12, marginTop = 12, marginBottom = 26;
@@ -84,8 +96,16 @@ function buildChartSVG(history, prediction) {
 
   const actualPts = history.map((v, i) => `${x(i)},${y(v)}`).join(" ");
   const lastIdx = history.length - 1;
-  const predLineX1 = x(lastIdx), predLineY1 = y(history[lastIdx]);
-  const predLineX2 = x(lastIdx + 1), predLineY2 = y(prediction);
+
+  // Forecast line starts at the last actual point, then through all 6
+  // predicted hours -- this is what actually shows the model's trajectory,
+  // not just a single dot.
+  const forecastPts = [`${x(lastIdx)},${y(history[lastIdx])}`]
+    .concat(horizon.map((v, j) => `${x(lastIdx + 1 + j)},${y(v)}`))
+    .join(" ");
+  const forecastMarkers = horizon
+    .map((v, j) => `<circle cx="${x(lastIdx + 1 + j)}" cy="${y(v)}" r="3.5" fill="${stats.color}" />`)
+    .join("");
 
   const gridLines = [0, 0.33, 0.66, 1].map((f) => {
     const gy = marginTop + f * plotH;
@@ -96,10 +116,9 @@ function buildChartSVG(history, prediction) {
     `;
   }).join("");
 
-  // X-axis ticks: hour offsets relative to the most recent actual reading
-  // (index lastIdx = "0h"), ending at the prediction point ("+1h").
+  // X-axis ticks span the full history + 6-hour forecast range.
   const xAxisY = marginTop + plotH;
-  const xTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => {
+  const xTicks = [0, 0.2, 0.4, 0.6, 0.8, 1].map((f) => {
     const idx = Math.round(f * (points.length - 1));
     const hourOffset = idx - lastIdx;
     const label = hourOffset === 0 ? "now" : `${hourOffset > 0 ? "+" : ""}${hourOffset}h`;
@@ -110,22 +129,22 @@ function buildChartSVG(history, prediction) {
     <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="Demand chart">
       ${gridLines}
       <polyline points="${actualPts}" fill="none" stroke="#14181f" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
-      <line x1="${predLineX1}" y1="${predLineY1}" x2="${predLineX2}" y2="${predLineY2}"
-            stroke="${stats.color}" stroke-width="3" stroke-dasharray="6,4" stroke-linecap="round" />
-      <circle cx="${predLineX2}" cy="${predLineY2}" r="5" fill="${stats.color}" />
+      <polyline points="${forecastPts}" fill="none" stroke="${stats.color}" stroke-width="2.5" stroke-dasharray="6,4" stroke-linejoin="round" stroke-linecap="round" />
+      ${forecastMarkers}
       ${xTicks}
     </svg>
   `;
 }
 
-function renderChart(history, prediction) {
+function renderChart(history, horizon) {
   state.lastHistory = history;
-  el.chartWrap.innerHTML = buildChartSVG(history, prediction);
+  el.chartWrap.innerHTML = buildChartSVG(history, horizon);
 }
 
 async function fetchNewDataAndPredict() {
   setLoading(true);
   el.predictionValue.textContent = "—";
+  el.horizonStrip.innerHTML = "";
   try {
     const res = await fetch(`${API_BASE}/predict_sample/${state.selectedModel}`);
     if (!res.ok) throw new Error(`Server responded ${res.status}`);
@@ -133,8 +152,9 @@ async function fetchNewDataAndPredict() {
 
     state.currentRawFeatures = data.raw_features;
     el.timestampLabel.textContent = data.timestamp;
-    el.predictionValue.textContent = data.prediction.toFixed(1);
-    renderChart(data.history, data.prediction);
+    el.predictionValue.textContent = data.horizon[0].toFixed(1);
+    renderHorizonStrip(data.horizon);
+    renderChart(data.history, data.horizon);
   } catch (err) {
     showError("Connection error — is the FastAPI backend running on port 8000?");
   } finally {
@@ -163,8 +183,9 @@ async function rePredictForCurrentData(modelName) {
     if (!res.ok) throw new Error(`Server responded ${res.status}`);
     const data = await res.json();
 
-    el.predictionValue.textContent = data.prediction.toFixed(1);
-    if (state.lastHistory) renderChart(state.lastHistory, data.prediction);
+    el.predictionValue.textContent = data.horizon[0].toFixed(1);
+    renderHorizonStrip(data.horizon);
+    if (state.lastHistory) renderChart(state.lastHistory, data.horizon);
   } catch (err) {
     showError(`Could not switch model: ${err.message}`);
   } finally {

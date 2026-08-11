@@ -1,25 +1,58 @@
-# Panama Energy AI — RNN vs. LSTM Demand Forecasting
+# Panama Energy AI — RNN vs. LSTM vs. Ensemble Demand Forecasting
+
+## Structure
+
+- **`Panama_Forecasting.ipynb`** — the whole pipeline in one notebook: load data, clean, EDA,
+  feature engineering, train RNN and LSTM (6-hour multi-step forecast), evaluate both plus a
+  simple average ensemble, and save everything `main.py` needs. This replaces the old `src/`
+  folder entirely — there's nothing else to look through.
+- **`main.py`** — self-contained FastAPI backend. No imports from `src/` (it no longer exists);
+  the model classes and data-prep functions are defined directly in this file, matching the
+  notebook exactly.
+- **`dashboard/`** — plain HTML/CSS/JS frontend, no build step, no external dependencies (the
+  chart is hand-drawn SVG, not a CDN library).
+- **`models/`** — `target_scaler.pkl`, `feat_scaler.pkl`, `rnn_model.pth`, `lstm_model.pth`,
+  produced by the notebook's last cell.
+
+## What changed in this pass
+
+1. **Reproducibility**: `set_seed(42)` is called before training each model, so results are
+   deterministic run to run (previously unseeded — the same LSTM config gave MAE 72.6 vs. 76.1 on
+   two different runs).
+2. **Multi-step forecasting**: models now predict 6 hours ahead (`PRED_LEN = 6`) instead of just
+   1 hour. `main.py` still surfaces only the first hour to the dashboard (its UI shows one number),
+   but the full 6-hour forecast is available from the model directly if you want to extend it.
+3. **Ensemble**: a simple average of the RNN and LSTM predictions, evaluated alongside both
+   individual models in the notebook's final comparison table.
+4. **Consolidation**: the whole `src/` folder (paths.py, config.py, architectures.py,
+   data_utils.py, train.py, evaluate.py) is gone. Training lives in the notebook; serving lives
+   entirely in `main.py`. Two files to know about instead of seven.
+
+The 80/20 chronological train/test split (no validation set) is unchanged from before, per request.
+
+## Running it
 
 ```bash
-# 1. Install dependencies (from the project root)
+# 1. Install dependencies
 pip install -r requirements.txt
 
-# 2. (Re-)train both models -- writes models/*.pth and models/*.pkl
-python src/train.py
+# 2. Open and run Panama_Forecasting.ipynb top to bottom
+#    -> writes models/*.pth and models/*.pkl
 
-# 3. Check both models' metrics on the test set
-python src/evaluate.py
-
-# 4. Start the backend API
+# 3. Start the backend
 uvicorn main:app --reload
 # -> running at http://127.0.0.1:8000
 
-# 5. Open the dashboard
-# Just open dashboard/index.html directly in a browser, or serve it:
+# 4. Open the dashboard
 python -m http.server 5500 --directory dashboard
 # -> open http://127.0.0.1:5500
 ```
 
-The dashboard fetches a random 24-hour window from the backend, shows the actual demand curve plus
-the model's next-hour prediction, and lets you switch between RNN and LSTM on the _same_ window for
-a fair side-by-side comparison — click "Fetch new data window" for a new sample.
+## Note on the bundled models
+
+The `models/` folder in this zip was produced by a **moderate verification run** (RNN 20 epochs,
+LSTM 10 of its recommended 40) — enough to be genuinely trained, not a 2-epoch smoke test, but
+still short of the full recommended budget. For final results, run the notebook yourself: it
+ships with the actual recommended settings in the Hyperparameters section, and will overwrite
+these with properly-trained models. If you do, remember to also update `MODEL_STATS` at the top
+of `dashboard/app.js` with the new numbers from the notebook's final comparison table.
