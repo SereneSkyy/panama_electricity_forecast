@@ -44,11 +44,3 @@ python -m http.server 5500 --directory dashboard
 # -> open http://127.0.0.1:5500
 ```
 
-## Note on the bundled models
-
-The `models/` folder in this zip was produced by a **moderate verification run** (RNN 20 epochs,
-LSTM 10 of its recommended 40) — enough to be genuinely trained, not a 2-epoch smoke test, but
-still short of the full recommended budget. For final results, run the notebook yourself: it
-ships with the actual recommended settings in the Hyperparameters section, and will overwrite
-these with properly-trained models. If you do, remember to also update `MODEL_STATS` at the top
-of `dashboard/app.js` with the new numbers from the notebook's final comparison table.
