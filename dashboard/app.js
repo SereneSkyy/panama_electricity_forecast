@@ -15,12 +15,14 @@
 
 const API_BASE = "http://127.0.0.1:8000";
 
-// Measured on the held-out test set, averaged across all 6 forecast hours
-// (a moderate-length verification run -- RNN 20 epochs, LSTM 10 of its
-// recommended 40 -- see the README; run the notebook fully for final numbers).
+// Measured on the held-out test set, averaged across all 6 forecast hours.
+// Full recommended training budget: RNN 20 epochs, LSTM 40 epochs, both
+// with dropout=0 (both models were underfitting, not overfitting, at this
+// budget -- dropout only slowed convergence further). See the notebook's
+// Section 15 for the full comparison, including the ensemble.
 const MODEL_STATS = {
-  LSTM: { MAE: "30.23", RMSE: "46.29", MAPE: "2.69", R2: "0.940", color: "#2563eb" },
-  RNN:  { MAE: "25.07", RMSE: "40.84", MAPE: "2.24", R2: "0.953", color: "#ea580c" },
+  LSTM: { MAE: "27.014", RMSE: "40.933", MAPE: "2.383", R2: "0.953", color: "#2563eb" },
+  RNN:  { MAE: "25.07", RMSE: "40.84", MAPE: "2.23", R2: "0.953", color: "#ea580c" },
 };
 
 const state = {

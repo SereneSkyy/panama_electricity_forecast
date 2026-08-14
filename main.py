@@ -35,9 +35,9 @@ class SpecificPredictionInput(BaseModel):
 # ---------- Model architectures (same shape as the training notebook) ----------
 
 class RNNModel(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, output_size):
+    def __init__(self, input_size, hidden_size, num_layers, output_size, dropout=0.0):
         super().__init__()
-        self.rnn = nn.RNN(input_size, hidden_size, num_layers, batch_first=True)
+        self.rnn = nn.RNN(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
         self.fc = nn.Linear(hidden_size, output_size)
 
     def forward(self, x):
@@ -46,7 +46,7 @@ class RNNModel(nn.Module):
 
 
 class LSTMModel(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, output_size, dropout=0):
+    def __init__(self, input_size, hidden_size, num_layers, output_size, dropout=0.2):
         super().__init__()
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
         self.fc = nn.Linear(hidden_size, output_size)
