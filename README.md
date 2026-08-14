@@ -6,7 +6,7 @@
   feature engineering, train RNN and LSTM (6-hour multi-step forecast), evaluate both plus a
   simple average ensemble, and save everything `main.py` needs. This replaces the old `src/`
   folder entirely — there's nothing else to look through.
-- **`main.py`** — self-contained FastAPI backend. No imports from `src/` (it no longer exists);
+- **`main.py`** — self-contained FastAPI backend.;
   the model classes and data-prep functions are defined directly in this file, matching the
   notebook exactly.
 - **`dashboard/`** — plain HTML/CSS/JS frontend, no build step, no external dependencies (the
@@ -20,15 +20,11 @@
    deterministic run to run (previously unseeded — the same LSTM config gave MAE 72.6 vs. 76.1 on
    two different runs).
 2. **Multi-step forecasting**: models now predict 6 hours ahead (`PRED_LEN = 6`) instead of just
-   1 hour. `main.py` still surfaces only the first hour to the dashboard (its UI shows one number),
-   but the full 6-hour forecast is available from the model directly if you want to extend it.
+   1 hour.
 3. **Ensemble**: a simple average of the RNN and LSTM predictions, evaluated alongside both
    individual models in the notebook's final comparison table.
-4. **Consolidation**: the whole `src/` folder (paths.py, config.py, architectures.py,
-   data_utils.py, train.py, evaluate.py) is gone. Training lives in the notebook; serving lives
-   entirely in `main.py`. Two files to know about instead of seven.
 
-The 80/20 chronological train/test split (no validation set) is unchanged from before, per request.
+The 80/20 chronological train/test split (no validation set)
 
 ## Running it
 
